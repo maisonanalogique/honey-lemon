@@ -10,6 +10,10 @@ const STRINGS = {
     appTitle: '蜂蜜檸檬',
     tagline: '賣出蜂蜜檸檬賺大錢',
     langName: '中文',
+    creditDesign: '遊戲設計',
+    creditDev: '遊戲開發',
+    designerName: '韋凌亦',
+    developerName: '謝瑋紘',
 
     // Lobby
     playOnDevice: '本機遊玩（輪流傳著玩）',
@@ -124,6 +128,10 @@ const STRINGS = {
     appTitle: 'Honey Lemon',
     tagline: 'Sell honey lemon, make a fortune',
     langName: 'EN',
+    creditDesign: 'Game design',
+    creditDev: 'Development',
+    designerName: 'Ling-Yi Wei',
+    developerName: 'Wei-Hung Hsieh',
 
     playOnDevice: 'Play on this device (pass & play)',
     playersSetup: 'Players',

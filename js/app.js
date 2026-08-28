@@ -233,6 +233,10 @@ function renderLanding() {
       </div>
     </div>
     ${app.ui.note ? `<p class="note">${esc(app.ui.note)}</p>` : ''}
+    <div class="credits">
+      <div><span class="credit-role">${t('creditDesign')}</span> ${t('designerName')}</div>
+      <div><span class="credit-role">${t('creditDev')}</span> ${t('developerName')}</div>
+    </div>
   </div>`;
 }
 

@@ -84,6 +84,8 @@ h3 { font-size: 15px; margin: 4px 0; color: var(--muted); }
 .online-block.disabled .btn { opacity: .5; }
 
 .hint { color: var(--muted); font-size: 13px; margin: 2px 0; }
+.credits { text-align: center; color: var(--muted); font-size: 13px; line-height: 1.9; margin-top: 4px; }
+.credit-role { display: inline-block; min-width: 4.5em; color: var(--honey-deep); font-weight: 600; }
 .note { color: #c0392b; font-weight: 600; text-align: center; font-size: 14px; }
 
 /* ---- Lobby ---- */
