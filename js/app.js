@@ -150,7 +150,10 @@ function clearTurnTimer() {
 // exactly one device ever auto-plays.
 function manageTurnTimer() {
   const s = app.doc && app.doc.state;
-  const key = iActingNow() ? `${s.version}:${meId()}` : null;
+  // The turn clock only applies to online play — pass-and-play on one device
+  // has no reason to rush anyone.
+  const online = app.store && app.store.mode === 'online';
+  const key = online && iActingNow() ? `${s.version}:${meId()}` : null;
   if (key === turnTimer.key) return;
   clearTurnTimer();
   if (!key) return;
@@ -400,7 +403,7 @@ function renderGame() {
   <div class="screen game">
     <div class="turnbar ${myTurn ? 'mine' : ''}">
       ${myTurn ? t('yourTurn') : t('turnOf', { name: esc(cur.name) })}
-      ${myTurn ? `<span id="turn-timer" class="turn-timer"></span>` : ''}
+      ${myTurn && app.store.mode === 'online' ? `<span id="turn-timer" class="turn-timer"></span>` : ''}
     </div>
     ${app.ui.note ? `<p class="note">${esc(app.ui.note)}</p>` : ''}
     <div class="mats">${mats}</div>
