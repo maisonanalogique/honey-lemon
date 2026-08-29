@@ -211,11 +211,19 @@ export function legalTargets(state, card) {
       return out;
     }
     case 'bear': {
-      const out = [];
+      // A bear must go for a jar that fills it up: it targets the jar(s) that
+      // maximize honey eaten = min(value, jarHoney). So a 3-bear must eat a
+      // 3+-honey jar if any exists (own or another's), only then a 2-, then a
+      // 1-honey jar; a 2-bear must eat a 2+-honey jar over a 1-honey one.
+      const jars = [];
       for (const p of state.players)
         for (const j of p.jars)
-          if (!j.lidded && j.honey > 0) out.push({ playerId: p.id, jarId: j.id });
-      return out;
+          if (!j.lidded && j.honey > 0) {
+            jars.push({ playerId: p.id, jarId: j.id, eaten: Math.min(card.value, j.honey) });
+          }
+      if (!jars.length) return [];
+      const best = Math.max(...jars.map((j) => j.eaten));
+      return jars.filter((j) => j.eaten === best).map((j) => ({ playerId: j.playerId, jarId: j.jarId }));
     }
     case 'bigbear':
     case 'truck':
@@ -275,6 +283,10 @@ export function playCard(state, playerId, handIndex, target = {}) {
       break;
     }
     case 'bear': {
+      // The chosen jar must be one the bear is allowed to eat (fullest-first).
+      const allowed = legalTargets(s, card)
+        .some((tg) => tg.playerId === target.playerId && tg.jarId === target.jarId);
+      if (!allowed) throw new Error('bear must eat a fullest jar');
       const jar = findJar(s, target.playerId, target.jarId);
       // Eat exactly `value` honey, or all of it if there's less (no picking).
       const eaten = Math.min(card.value, jar.honey);

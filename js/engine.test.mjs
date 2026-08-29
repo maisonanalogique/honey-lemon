@@ -49,6 +49,28 @@ ok('jar always playable', cardIsPlayable(testState, { type: 'jar' }) === true);
 ok('truck always playable', cardIsPlayable(testState, { type: 'truck' }) === true);
 ok('bear needs honey: not playable on empty lidded jar', cardIsPlayable(testState, bear3) === false);
 
+// --- Bear must target the jar it can feed fullest on ---
+const bearBoard = {
+  players: [
+    { id: 'a', seat: 0, jars: [
+      { id: 'j3', honey: 3, lemon: 0, lidded: false },
+      { id: 'j1', honey: 1, lemon: 0, lidded: false },
+    ] },
+    { id: 'b', seat: 1, jars: [
+      { id: 'j2', honey: 2, lemon: 0, lidded: false },
+      { id: 'jL', honey: 3, lemon: 0, lidded: true }, // lidded — never a target
+    ] },
+  ],
+  turnSeat: 0,
+};
+const ids = (targets) => targets.map((t) => t.jarId).sort();
+ok('3-bear may only target the 3-honey jar',
+  JSON.stringify(ids(legalTargets(bearBoard, { type: 'bear', value: 3 }))) === JSON.stringify(['j3']));
+ok('2-bear may target 3- and 2-honey jars, not the 1',
+  JSON.stringify(ids(legalTargets(bearBoard, { type: 'bear', value: 2 }))) === JSON.stringify(['j2', 'j3']));
+ok('1-bear may target any honeyed jar (all equal)',
+  JSON.stringify(ids(legalTargets(bearBoard, { type: 'bear', value: 1 }))) === JSON.stringify(['j1', 'j2', 'j3']));
+
 // --- Play a jar onto self, then honey onto it ---
 s = createMatch(players, mulberry32(7));
 const cur = currentPlayer(s);
