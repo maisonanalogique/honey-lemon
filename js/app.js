@@ -383,8 +383,16 @@ function renderGame() {
     targeting = { card, targets: legalTargets(s, card) };
   }
 
+  // Each player's most recent play (so everyone can see what others just did),
+  // plus who played the very last card overall (highlighted extra).
+  const lastPlayBy = {};
+  let mostRecentActorId = null;
+  for (const e of s.log) {
+    if (e.t === 'play') { lastPlayBy[e.by] = e; mostRecentActorId = e.by; }
+  }
+
   const mats = s.players
-    .map((p) => renderMat(p, s, me, targeting))
+    .map((p) => renderMat(p, s, me, targeting, lastPlayBy[p.id], p.id === mostRecentActorId))
     .join('');
 
   return `${topBar(`<span class="chip flat">${t('round', { n: s.round })}${t('ofRounds', { n: s.totalRounds })}</span>
@@ -401,7 +409,7 @@ function renderGame() {
   </div>`;
 }
 
-function renderMat(p, s, me, targeting) {
+function renderMat(p, s, me, targeting, lastPlay, isMostRecent) {
   const isMe = p.id === me;
   const isCurrent = p.seat === s.turnSeat;
   const total = s.totals[p.id] || 0;
@@ -414,10 +422,27 @@ function renderMat(p, s, me, targeting) {
     <div class="mat-head">
       <span class="pname">${esc(p.name)}${isMe ? ` <span class="tag">${t('targetSelf')}</span>` : ''}</span>
       ${s.teamMode ? `<span class="tag team${p.team}">${t('team', { n: p.team + 1 })}</span>` : ''}
-      <span class="coins">🪙 ${total}</span>
+      <span class="mat-right">
+        ${renderLastCard(lastPlay, isMostRecent)}
+        <span class="coins">🪙 ${total}</span>
+      </span>
     </div>
     <div class="jars">${jars || `<span class="hint">${t('empty')}</span>`}</div>
   </div>`;
+}
+
+// The chip on a player's mat showing the last card they played. Icon + short
+// name; the very latest play (across all players) pulses. `title` carries the
+// full effect (who/whom/how much) for a desktop hover.
+function renderLastCard(lastPlay, isMostRecent) {
+  if (!lastPlay) return '';
+  const c = lastPlay.card;
+  const bearN = c.type === 'bear' ? `<span class="bear-n">${c.value}</span>` : '';
+  return `<span class="last-card ${isMostRecent ? 'just-played' : ''}" title="${logLine(lastPlay)}">
+    <span class="lc-label">${t('lastPlayed')}</span>
+    <span class="lc-icon">${ICON[c.type]}${bearN}</span>
+    <span class="lc-name">${cardName(c)}</span>
+  </span>`;
 }
 
 function renderJar(ownerId, jar, targeting) {

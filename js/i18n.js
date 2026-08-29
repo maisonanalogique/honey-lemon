@@ -12,8 +12,8 @@ const STRINGS = {
     langName: '中文',
     creditDesign: '遊戲設計',
     creditDev: '遊戲開發',
-    designerName: '韋凌亦',
-    developerName: '謝瑋紘',
+    designerName: 'Stillwind',
+    developerName: 'WHH',
 
     // Lobby
     playOnDevice: '本機遊玩（輪流傳著玩）',
@@ -43,6 +43,7 @@ const STRINGS = {
     yourTurn: '輪到你了',
     turnOf: '輪到 {name}',
     yourJars: '你的罐子',
+    lastPlayed: '上一張',
     coins: '{n} 金幣',
     team: '隊伍 {n}',
     lidded: '已蓋蓋子',
@@ -133,8 +134,8 @@ const STRINGS = {
     langName: 'EN',
     creditDesign: 'Game design',
     creditDev: 'Development',
-    designerName: 'Ling-Yi Wei',
-    developerName: 'Wei-Hung Hsieh',
+    designerName: 'Stillwind',
+    developerName: 'WHH',
 
     playOnDevice: 'Play on this device (pass & play)',
     playersSetup: 'Players',
@@ -162,6 +163,7 @@ const STRINGS = {
     yourTurn: 'Your turn',
     turnOf: "{name}'s turn",
     yourJars: 'Your jars',
+    lastPlayed: 'Last',
     coins: '{n} coins',
     team: 'Team {n}',
     lidded: 'Lidded',
