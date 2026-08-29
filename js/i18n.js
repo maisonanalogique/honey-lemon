@@ -32,6 +32,9 @@ const STRINGS = {
     copyLink: '複製邀請連結',
     linkCopied: '已複製！',
     share: '把連結傳給朋友，用手機加入',
+    leaveRoom: '離開房間',
+    roomClosed: '房主已關閉房間',
+    autoPlayed: '時間到，系統自動幫你出牌',
 
     // Board
     round: '第 {n} 局',
@@ -149,6 +152,9 @@ const STRINGS = {
     copyLink: 'Copy invite link',
     linkCopied: 'Copied!',
     share: 'Send the link to friends to join on their phones',
+    leaveRoom: 'Leave room',
+    roomClosed: 'The host closed the room',
+    autoPlayed: "Time's up — auto-played for you",
 
     round: 'Round {n}',
     ofRounds: ' of {n}',

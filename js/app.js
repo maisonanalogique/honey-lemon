@@ -33,6 +33,10 @@ const app = {
   },
 };
 
+// If you don't act within this long, the system plays a random legal move.
+const TURN_MS = 30000;
+let turnTimer = { key: null, tick: null, deadline: 0 };
+
 // ---- Boot ----------------------------------------------------------------
 function boot() {
   const params = new URLSearchParams(location.search);
@@ -44,7 +48,12 @@ function boot() {
 // ---- Store wiring --------------------------------------------------------
 function onDoc(doc) {
   app.doc = doc;
-  if (!doc) { render(); return; }
+  if (!doc) {
+    // Room no longer exists (host closed it) — return everyone to the start.
+    if (app.store) { teardownStore(); app.screen = 'landing'; note(t('roomClosed')); }
+    render();
+    return;
+  }
 
   if (doc.state) {
     doc.state = normalizeState(doc.state);
@@ -103,6 +112,84 @@ function applyMove(fn) {
     if (doc && doc.state && base && doc.state.version !== base.version) return doc; // stale, drop
     return { ...doc, state: next };
   });
+}
+
+// ---- Leaving a room (lobby only) -----------------------------------------
+function teardownStore() {
+  clearTurnTimer();
+  if (app.store && app.store.disconnect) app.store.disconnect();
+  app.store = null;
+  app.doc = null;
+  app.ui.lastGateSeat = null;
+  app.ui.passGateFor = null;
+}
+
+async function leaveRoom() {
+  const store = app.store;
+  if (store && store.leave) { try { await store.leave(); } catch (e) { /* best effort */ } }
+  teardownStore();
+  app.screen = 'landing';
+  note(null);
+  render();
+}
+
+// ---- Turn timer + auto-play ----------------------------------------------
+function iActingNow() {
+  const s = app.doc && app.doc.state;
+  return !!(s && s.phase === 'playing' && app.ui.passGateFor == null
+    && currentPlayer(s).id === meId());
+}
+
+function clearTurnTimer() {
+  if (turnTimer.tick) clearInterval(turnTimer.tick);
+  turnTimer = { key: null, tick: null, deadline: 0 };
+}
+
+// Run a countdown only on the device whose turn it is; restart it whenever the
+// turn changes (new state version). No timer runs on anyone else's screen, so
+// exactly one device ever auto-plays.
+function manageTurnTimer() {
+  const s = app.doc && app.doc.state;
+  const key = iActingNow() ? `${s.version}:${meId()}` : null;
+  if (key === turnTimer.key) return;
+  clearTurnTimer();
+  if (!key) return;
+  turnTimer.key = key;
+  turnTimer.deadline = Date.now() + TURN_MS;
+  turnTimer.tick = setInterval(onTurnTick, 250);
+  onTurnTick();
+}
+
+function onTurnTick() {
+  const remain = Math.max(0, turnTimer.deadline - Date.now());
+  const el = document.getElementById('turn-timer');
+  if (el) {
+    const sec = Math.ceil(remain / 1000);
+    el.textContent = ` ⏳ ${sec}`;
+    el.classList.toggle('urgent', sec <= 10);
+  }
+  if (remain <= 0) { clearTurnTimer(); autoPlayRandom(); }
+}
+
+function autoPlayRandom() {
+  const s = app.doc && app.doc.state;
+  const me = meId();
+  if (!s || s.phase !== 'playing' || currentPlayer(s).id !== me) return;
+  const cur = currentPlayer(s);
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  note(t('autoPlayed'));
+  if (!currentPlayerHasLegalMove(s)) {
+    applyMove((x) => discardCard(x, me, Math.floor(Math.random() * cur.hand.length)));
+  } else {
+    const idxs = cur.hand.map((c, i) => (cardIsPlayable(s, c) ? i : -1)).filter((i) => i >= 0);
+    const idx = pick(idxs);
+    const target = pick(legalTargets(s, cur.hand[idx])) || {};
+    applyMove((x) => playCard(x, me, idx, target));
+  }
+  // Clear the "auto-played" toast shortly after, if nothing else replaced it.
+  const msg = t('autoPlayed');
+  setTimeout(() => { if (app.ui.note === msg) { note(null); render(); } }, 2600);
 }
 
 function doCardTap(idx) {
@@ -195,6 +282,7 @@ function render() {
   else if (app.screen === 'lobby') body = renderLobby();
   else if (app.screen === 'game') body = renderGame();
   root.innerHTML = body + renderOverlays();
+  manageTurnTimer();
 }
 
 function topBar(extra = '') {
@@ -279,6 +367,7 @@ function renderLobby() {
          ${players.length < 2 ? `<p class="hint">${t('needTwoPlayers')}</p>` : ''}`
       : `<p class="hint">${t('waitingHost')}</p>`}
     </div>
+    <button class="link danger" data-act="leaveRoom">${t('leaveRoom')}</button>
   </div>`;
 }
 
@@ -302,7 +391,8 @@ function renderGame() {
      <span class="chip flat">🂠 ${t('deckLeft', { n: s.deck.length })}</span>`)}
   <div class="screen game">
     <div class="turnbar ${myTurn ? 'mine' : ''}">
-      ${cur.id === me && s.phase === 'playing' && app.ui.passGateFor == null ? t('yourTurn') : t('turnOf', { name: esc(cur.name) })}
+      ${myTurn ? t('yourTurn') : t('turnOf', { name: esc(cur.name) })}
+      ${myTurn ? `<span id="turn-timer" class="turn-timer"></span>` : ''}
     </div>
     ${app.ui.note ? `<p class="note">${esc(app.ui.note)}</p>` : ''}
     <div class="mats">${mats}</div>
@@ -554,6 +644,7 @@ document.addEventListener('click', (ev) => {
       navigator.clipboard?.writeText(el.dataset.link).then(() => { S.copied = true; render(); });
       break;
     case 'startMatch': startMatch(); break;
+    case 'leaveRoom': leaveRoom(); break;
 
     case 'ready': S.passGateFor = null; render(); break;
     case 'card': doCardTap(Number(el.dataset.idx)); break;

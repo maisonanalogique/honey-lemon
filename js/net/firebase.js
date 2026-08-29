@@ -61,6 +61,7 @@ export async function createOnlineStore({ config, mode, code, name }) {
   }
 
   const roomRef = ref(db, `rooms/${roomCode}`);
+  let unsub = null;
 
   return {
     mode: 'online',
@@ -69,7 +70,7 @@ export async function createOnlineStore({ config, mode, code, name }) {
     isHost: mode === 'create',
 
     subscribe(fn) {
-      onValue(roomRef, (snap) => fn(snap.val()));
+      unsub = onValue(roomRef, (snap) => fn(snap.val()));
     },
 
     // mutator: (currentDoc) => newDoc. Runs inside a transaction.
@@ -78,6 +79,19 @@ export async function createOnlineStore({ config, mode, code, name }) {
       // transaction just guards a rare concurrent write. Return room unchanged
       // on the null first-pass so RTDB re-runs with real server data.
       await runTransaction(roomRef, (room) => (room ? mutator(room) : room));
+    },
+
+    // Leave the lobby (pre-game only). The host closes the whole room; anyone
+    // else just removes their own player entry.
+    async leave() {
+      if (mode === 'create') await set(roomRef, null);
+      else await set(ref(db, `rooms/${roomCode}/players/${myId}`), null);
+    },
+
+    // Stop listening — call when leaving so a stale listener can't fire.
+    disconnect() {
+      if (unsub) unsub();
+      unsub = null;
     },
   };
 }

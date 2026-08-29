@@ -103,6 +103,9 @@ h3 { font-size: 15px; margin: 4px 0; color: var(--muted); }
   background: #fff5d6; color: var(--honey-deep); margin-bottom: 10px;
 }
 .turnbar.mine { background: var(--honey); color: #3a2b00; }
+.turn-timer { font-variant-numeric: tabular-nums; opacity: .85; }
+.turn-timer.urgent { color: #b3271b; font-weight: 800; opacity: 1; }
+.link.danger { color: #c0392b; display: block; margin: 14px auto 0; }
 .mats { display: flex; flex-direction: column; gap: 10px; }
 .mat {
   background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 12px;
