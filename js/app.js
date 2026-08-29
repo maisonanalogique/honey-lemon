@@ -386,20 +386,29 @@ function renderGame() {
     targeting = { card, targets: legalTargets(s, card) };
   }
 
-  // Highlight the icon of the single most-recent card played: the ingredient
-  // added (🍯/🍋) or the lid (🎀) placed, in the jar it went to. Bears and the
-  // truck leave no icon, so nothing is highlighted after those.
+  // Mark the single most-recent card played with a corner pip on its icon:
+  //   honey/lemon -> that ingredient in the target jar
+  //   lid         -> the 🎀 on the target jar
+  //   jar         -> the newly added (last) jar of the target player
+  // Bears leave no icon, so they show a banner instead (below); the truck ends
+  // the round.
   let hlJarId = null;
   let hlKind = null;
   let lastPlay = null;
   for (const e of s.log) if (e.t === 'play') lastPlay = e;
-  if (lastPlay && lastPlay.target && lastPlay.target.jarId) {
+  if (lastPlay) {
     const type = lastPlay.card.type;
-    if (type === 'honey' || type === 'lemon' || type === 'lid') {
-      hlJarId = lastPlay.target.jarId;
+    const tgt = lastPlay.target || {};
+    if ((type === 'honey' || type === 'lemon' || type === 'lid') && tgt.jarId) {
+      hlJarId = tgt.jarId;
       hlKind = type;
+    } else if (type === 'jar' && tgt.playerId) {
+      const tp = s.players.find((p) => p.id === tgt.playerId);
+      if (tp && tp.jars.length) { hlJarId = tp.jars[tp.jars.length - 1].id; hlKind = 'jar'; }
     }
   }
+  const bearBanner = lastPlay && (lastPlay.card.type === 'bear' || lastPlay.card.type === 'bigbear')
+    ? logLine(lastPlay) : null;
 
   const mats = s.players
     .map((p) => renderMat(p, s, me, targeting, hlJarId, hlKind))
@@ -413,6 +422,7 @@ function renderGame() {
       ${myTurn && app.store.mode === 'online' ? `<span id="turn-timer" class="turn-timer"></span>` : ''}
     </div>
     ${app.ui.note ? `<p class="note">${esc(app.ui.note)}</p>` : ''}
+    ${bearBanner ? `<div class="last-banner">${bearBanner}</div>` : ''}
     <div class="mats">${mats}</div>
     ${renderHandArea(s, me, cur, myTurn, targeting)}
     ${renderLog(s)}
@@ -462,7 +472,7 @@ function renderJar(ownerId, jar, targeting, hlKind) {
     }
     contents = parts.join('');
   } else {
-    contents = `<span class="jar-empty">${ICON.jar}</span>`;
+    contents = `<span class="jar-empty${hlKind === 'jar' ? ' last-hit' : ''}">${ICON.jar}</span>`;
   }
 
   return `<div class="jar ${jar.lidded ? 'lidded' : ''} ${isTarget ? 'target' : ''}"

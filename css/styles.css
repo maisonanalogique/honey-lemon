@@ -103,6 +103,11 @@ h3 { font-size: 15px; margin: 4px 0; color: var(--muted); }
   background: #fff5d6; color: var(--honey-deep); margin-bottom: 10px;
 }
 .turnbar.mine { background: var(--honey); color: #3a2b00; }
+.last-banner {
+  background: #fff5d6; border: 1px solid var(--line); border-radius: 10px;
+  padding: 8px 12px; font-size: 13px; color: var(--ink);
+  margin-bottom: 10px; text-align: center; line-height: 1.4;
+}
 .turn-timer { font-variant-numeric: tabular-nums; opacity: .85; }
 .turn-timer.urgent { color: #b3271b; font-weight: 800; opacity: 1; }
 .link.danger { color: #c0392b; display: block; margin: 14px auto 0; }
@@ -123,10 +128,12 @@ h3 { font-size: 15px; margin: 4px 0; color: var(--muted); }
    (ingredient or lid) — a subtle honey-tinted swatch behind it. */
 .jar-contents .ing { position: relative; display: inline-block; }
 .jar-contents .ing-more { color: var(--ink); font-size: 14px; vertical-align: middle; }
-.last-hit {
-  border-radius: 7px;
-  background: rgba(246, 177, 0, .32);
-  box-shadow: 0 0 0 3px rgba(246, 177, 0, .32);
+/* Corner gold pip marking the last-played icon (ingredient / lid / new jar). */
+.last-hit { position: relative; }
+.last-hit::after {
+  content: ''; position: absolute; top: -3px; right: -4px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--honey-deep); box-shadow: 0 0 0 2px var(--paper);
 }
 .jars { display: flex; gap: 8px; flex-wrap: wrap; }
 .jar {
@@ -136,7 +143,7 @@ h3 { font-size: 15px; margin: 4px 0; color: var(--muted); }
 .jar.lidded { background: #f0ece0; }
 .jar.target { border-color: var(--lemon); box-shadow: 0 0 0 3px #b7ecd9; cursor: pointer; }
 .jar-contents { font-size: 20px; line-height: 1.3; min-height: 26px; word-break: break-all; }
-.jar-empty { opacity: .4; }
+.jar-empty { opacity: .4; position: relative; display: inline-block; }
 .jar-meta { display: flex; gap: 4px; justify-content: center; align-items: center; margin-top: 2px; min-height: 18px; }
 .jar-val { font-size: 12px; font-weight: 700; color: var(--honey-deep); }
 .lid { font-size: 13px; }
@@ -208,5 +215,6 @@ h3 { font-size: 15px; margin: 4px 0; color: var(--muted); }
   .btn.primary { color: #2a1d00; }
   .jar { background: #2a2216; } .jar.lidded { background: #201a10; }
   .roomcode { background: #3a2f16; } .turnbar { background: #3a2f16; }
+  .last-banner { background: #3a2f16; }
   .mat.me { background: #332a19; }
 }
