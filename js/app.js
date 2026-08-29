@@ -11,7 +11,7 @@ import {
 import { t, cardName, getLang, setLang, LANGS } from './i18n.js';
 import { FIREBASE_CONFIG } from './config.js';
 import { createHotseatStore } from './net/local.js';
-import { createOnlineStore } from './net/firebase.js';
+import { createOnlineStore, browseRooms } from './net/firebase.js';
 
 // Emoji render reliably across phones EXCEPT the jar (🫙 is missing on older
 // fonts and shows as tofu), so the jar is an inline SVG instead.
@@ -43,6 +43,34 @@ function boot() {
   const room = params.get('room');
   if (room) app.ui.prefillCode = room.toUpperCase();
   render();
+  ensureBrowsing();
+}
+
+// ---- Open-rooms browser (homepage list of public, joinable rooms) ----------
+let browseUnsub = null;
+async function ensureBrowsing() {
+  if (!FIREBASE_CONFIG || browseUnsub) return;
+  try {
+    browseUnsub = await browseRooms(FIREBASE_CONFIG, (list) => {
+      app.ui.roomList = list;
+      if (app.screen === 'landing') paintRoomList();
+    });
+  } catch (e) { /* offline / not configured — no list */ }
+}
+
+// Update only the room-list container, so typing in the name field isn't
+// disturbed when the list refreshes.
+function paintRoomList() {
+  const el = document.getElementById('roomlist');
+  if (!el) return;
+  const list = app.ui.roomList || [];
+  el.innerHTML = list.length
+    ? list.map((r) => `<div class="roomrow">
+        <span class="rr-code">${r.code}</span>
+        <span class="rr-info">${esc(r.hostName)} · ${t('roomPlayers', { n: r.count })}</span>
+        <button class="btn small" data-act="join-listed" data-code="${r.code}">${t('joinBtn')}</button>
+      </div>`).join('')
+    : `<p class="hint">${t('noOpenRooms')}</p>`;
 }
 
 // ---- Store wiring --------------------------------------------------------
@@ -248,11 +276,11 @@ function startHotseat(names) {
   }));
 }
 
-async function goOnline(mode, name, code) {
+async function goOnline(mode, name, code, isPublic) {
   if (!FIREBASE_CONFIG) { note('Online not configured yet'); return; }
   note(null);
   try {
-    app.store = await createOnlineStore({ config: FIREBASE_CONFIG, mode, name, code });
+    app.store = await createOnlineStore({ config: FIREBASE_CONFIG, mode, name, code, isPublic });
   } catch (e) {
     note(e.message === 'room-not-found' ? '房間不存在 / Room not found' : (e.message || 'error'));
     return;
@@ -286,6 +314,7 @@ function render() {
   else if (app.screen === 'game') body = renderGame();
   root.innerHTML = body + renderOverlays();
   manageTurnTimer();
+  if (app.screen === 'landing') paintRoomList();
 }
 
 function topBar(extra = '') {
@@ -316,6 +345,7 @@ function renderLanding() {
       <button class="btn primary" data-act="toHotseat">📱 ${t('playOnDevice')}</button>
       <div class="online-block ${online ? '' : 'disabled'}">
         <button class="btn" data-act="online-create" ${online ? '' : 'disabled'}>🌐 ${t('createRoom')} (online)</button>
+        <label class="checkrow"><input type="checkbox" id="makePublic" data-act="togglePublic" ${app.ui.makePublic ? 'checked' : ''} ${online ? '' : 'disabled'}/> <span>${t('listPublicly')}</span></label>
         <div class="join-row">
           <input id="code" class="input code" maxlength="4" placeholder="${t('enterCode')}" value="${esc(code)}" />
           <button class="btn" data-act="online-join" ${online ? '' : 'disabled'}>${t('joinRoom')}</button>
@@ -323,6 +353,7 @@ function renderLanding() {
         ${online ? '' : `<p class="hint">🔌 貼上 Firebase 設定即可開啟線上對戰 · Paste Firebase config to enable online</p>`}
       </div>
     </div>
+    ${online ? `<div class="openrooms"><h3>${t('openRooms')}</h3><div id="roomlist" class="roomlist"></div></div>` : ''}
     ${app.ui.note ? `<p class="note">${esc(app.ui.note)}</p>` : ''}
     <div class="credits">
       <div><span class="credit-role">${t('creditDesign')}</span> ${t('designerName')}</div>
@@ -678,7 +709,14 @@ document.addEventListener('click', (ev) => {
 
     case 'online-create': {
       const name = (document.getElementById('name') || {}).value?.trim() || 'Host';
-      goOnline('create', name);
+      const isPublic = document.getElementById('makePublic')?.checked || false;
+      goOnline('create', name, null, isPublic);
+      break;
+    }
+    case 'togglePublic': S.makePublic = el.checked; break;
+    case 'join-listed': {
+      const nm = (document.getElementById('name') || {}).value?.trim() || 'Player';
+      goOnline('join', nm, el.dataset.code);
       break;
     }
     case 'online-join': {

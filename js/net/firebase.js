@@ -23,8 +23,8 @@ function genId() {
   return `p${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-3)}`;
 }
 
-// mode: 'create' | 'join'
-export async function createOnlineStore({ config, mode, code, name }) {
+// mode: 'create' | 'join'. isPublic (create only) lists the room on the homepage.
+export async function createOnlineStore({ config, mode, code, name, isPublic }) {
   const { initializeApp } = await import(
     `https://www.gstatic.com/firebasejs/${SDK}/firebase-app.js`
   );
@@ -47,6 +47,7 @@ export async function createOnlineStore({ config, mode, code, name }) {
       // own child, so joins never race and need no read-modify-write transaction.
       players: { [myId]: { name, joinedAt: Date.now() } },
       started: false,
+      public: !!isPublic,
       state: null,
       createdAt: Date.now(),
     });
@@ -94,4 +95,36 @@ export async function createOnlineStore({ config, mode, code, name }) {
       unsub = null;
     },
   };
+}
+
+// Live list of open, public, joinable rooms for the homepage. Calls onList with
+// an array of { code, count, hostName, createdAt }. Returns an unsubscribe fn.
+// Uses a server-side filter on `started` so active games' large state isn't
+// downloaded; public/full/stale filtering happens client-side.
+export async function browseRooms(config, onList) {
+  const { initializeApp, getApps } = await import(
+    `https://www.gstatic.com/firebasejs/${SDK}/firebase-app.js`
+  );
+  const { getDatabase, ref, query, orderByChild, equalTo, onValue } = await import(
+    `https://www.gstatic.com/firebasejs/${SDK}/firebase-database.js`
+  );
+  const existing = getApps().find((a) => a.name === 'hl-browse');
+  const app = existing || initializeApp(config, 'hl-browse');
+  const db = getDatabase(app);
+  const openRooms = query(ref(db, 'rooms'), orderByChild('started'), equalTo(false));
+  const HOUR = 60 * 60 * 1000;
+
+  return onValue(openRooms, (snap) => {
+    const rooms = snap.val() || {};
+    const now = Date.now();
+    const list = Object.entries(rooms)
+      .filter(([, r]) => r && r.public && !r.started)
+      .map(([roomCode, r]) => {
+        const arr = Object.values(r.players || {}).sort((a, b) => (a.joinedAt || 0) - (b.joinedAt || 0));
+        return { code: roomCode, count: arr.length, hostName: arr[0] ? arr[0].name : '?', createdAt: r.createdAt || 0 };
+      })
+      .filter((x) => x.count >= 1 && x.count < 4 && now - x.createdAt < HOUR)
+      .sort((a, b) => b.createdAt - a.createdAt);
+    onList(list);
+  }, () => onList([]));
 }

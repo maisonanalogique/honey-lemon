@@ -82,6 +82,16 @@ h3 { font-size: 15px; margin: 4px 0; color: var(--muted); }
 .link { background: none; border: none; color: var(--honey-deep); font-weight: 600; cursor: pointer; padding: 4px; }
 .online-block { display: flex; flex-direction: column; gap: 8px; border-top: 1px dashed var(--line); padding-top: 10px; }
 .online-block.disabled .btn { opacity: .5; }
+.checkrow { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.checkrow input { margin-top: 2px; flex: 0 0 auto; }
+
+.openrooms { display: flex; flex-direction: column; gap: 8px; }
+.openrooms h3 { margin: 4px 0 0; }
+.roomlist { display: flex; flex-direction: column; gap: 8px; }
+.roomrow { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.rr-code { font-weight: 800; letter-spacing: .12em; color: var(--honey-deep); }
+.rr-info { color: var(--muted); font-size: 13px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.btn.small { width: auto; flex: 0 0 auto; padding: 8px 16px; font-size: 14px; }
 
 .hint { color: var(--muted); font-size: 13px; margin: 2px 0; }
 .credits { text-align: center; color: var(--muted); font-size: 13px; line-height: 1.9; margin-top: 4px; }

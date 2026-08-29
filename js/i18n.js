@@ -35,6 +35,11 @@ const STRINGS = {
     leaveRoom: '離開房間',
     roomClosed: '房主已關閉房間',
     autoPlayed: '時間到，系統自動幫你出牌',
+    listPublicly: '公開此房間（讓別人在首頁看到並加入）',
+    openRooms: '可加入的公開房間',
+    noOpenRooms: '目前沒有公開房間',
+    roomPlayers: '{n}/4 人',
+    joinBtn: '加入',
 
     // Board
     round: '第 {n} 局',
@@ -155,6 +160,11 @@ const STRINGS = {
     leaveRoom: 'Leave room',
     roomClosed: 'The host closed the room',
     autoPlayed: "Time's up — auto-played for you",
+    listPublicly: 'List this room publicly (others can see & join from home)',
+    openRooms: 'Open rooms',
+    noOpenRooms: 'No open rooms right now',
+    roomPlayers: '{n}/4',
+    joinBtn: 'Join',
 
     round: 'Round {n}',
     ofRounds: ' of {n}',
