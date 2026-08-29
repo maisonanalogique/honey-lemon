@@ -386,16 +386,23 @@ function renderGame() {
     targeting = { card, targets: legalTargets(s, card) };
   }
 
-  // Each player's most recent play (so everyone can see what others just did),
-  // plus who played the very last card overall (highlighted extra).
-  const lastPlayBy = {};
-  let mostRecentActorId = null;
-  for (const e of s.log) {
-    if (e.t === 'play') { lastPlayBy[e.by] = e; mostRecentActorId = e.by; }
+  // Highlight the icon of the single most-recent card played: the ingredient
+  // added (🍯/🍋) or the lid (🎀) placed, in the jar it went to. Bears and the
+  // truck leave no icon, so nothing is highlighted after those.
+  let hlJarId = null;
+  let hlKind = null;
+  let lastPlay = null;
+  for (const e of s.log) if (e.t === 'play') lastPlay = e;
+  if (lastPlay && lastPlay.target && lastPlay.target.jarId) {
+    const type = lastPlay.card.type;
+    if (type === 'honey' || type === 'lemon' || type === 'lid') {
+      hlJarId = lastPlay.target.jarId;
+      hlKind = type;
+    }
   }
 
   const mats = s.players
-    .map((p) => renderMat(p, s, me, targeting, lastPlayBy[p.id], p.id === mostRecentActorId))
+    .map((p) => renderMat(p, s, me, targeting, hlJarId, hlKind))
     .join('');
 
   return `${topBar(`<span class="chip flat">${t('round', { n: s.round })}${t('ofRounds', { n: s.totalRounds })}</span>
@@ -412,54 +419,57 @@ function renderGame() {
   </div>`;
 }
 
-function renderMat(p, s, me, targeting, lastPlay, isMostRecent) {
+function renderMat(p, s, me, targeting, hlJarId, hlKind) {
   const isMe = p.id === me;
   const isCurrent = p.seat === s.turnSeat;
   const total = s.totals[p.id] || 0;
   const jarTarget = targeting && targeting.card.type === 'jar';
   const clickablePlayer = jarTarget && targeting.targets.some((tg) => tg.playerId === p.id);
 
-  const jars = p.jars.map((j) => renderJar(p.id, j, targeting)).join('');
+  const jars = p.jars
+    .map((j) => renderJar(p.id, j, targeting, j.id === hlJarId ? hlKind : null))
+    .join('');
   return `<div class="mat ${isCurrent ? 'current' : ''} ${isMe ? 'me' : ''} ${clickablePlayer ? 'target' : ''}"
       ${clickablePlayer ? `data-act="target-player" data-pid="${p.id}"` : ''}>
     <div class="mat-head">
       <span class="pname">${esc(p.name)}${isMe ? ` <span class="tag">${t('targetSelf')}</span>` : ''}</span>
       ${s.teamMode ? `<span class="tag team${p.team}">${t('team', { n: p.team + 1 })}</span>` : ''}
-      <span class="mat-right">
-        ${renderLastCard(lastPlay, isMostRecent)}
-        <span class="coins">🪙 ${total}</span>
-      </span>
+      <span class="coins">🪙 ${total}</span>
     </div>
     <div class="jars">${jars || `<span class="hint">${t('empty')}</span>`}</div>
   </div>`;
 }
 
-// The chip on a player's mat showing the last card they played. Icon + short
-// name; the very latest play (across all players) pulses. `title` carries the
-// full effect (who/whom/how much) for a desktop hover.
-function renderLastCard(lastPlay, isMostRecent) {
-  if (!lastPlay) return '';
-  const c = lastPlay.card;
-  const bearN = c.type === 'bear' ? `<span class="bear-n">${c.value}</span>` : '';
-  return `<span class="last-card ${isMostRecent ? 'just-played' : ''}" title="${logLine(lastPlay)}">
-    <span class="lc-label">${t('lastPlayed')}</span>
-    <span class="lc-icon">${ICON[c.type]}${bearN}</span>
-    <span class="lc-name">${cardName(c)}</span>
-  </span>`;
-}
-
-function renderJar(ownerId, jar, targeting) {
+// hlKind: which icon in THIS jar to highlight as the last card played —
+// 'honey' | 'lemon' (last of that type in the contents) | 'lid' (the 🎀) | null.
+function renderJar(ownerId, jar, targeting, hlKind) {
   const value = scoreJar(jar);
   const isTarget = targeting && !['jar', 'bigbear', 'truck'].includes(targeting.card.type)
     && targeting.targets.some((tg) => tg.playerId === ownerId && tg.jarId === jar.id);
-  const contents = (jar.honey || jar.lemon)
-    ? `${ICON.honey.repeat(Math.min(jar.honey, 6))}${jar.honey > 6 ? `×${jar.honey}` : ''}${ICON.lemon.repeat(jar.lemon)}`
-    : `<span class="jar-empty">${ICON.jar}</span>`;
+
+  let contents;
+  if (jar.honey || jar.lemon) {
+    const parts = [];
+    const hCap = Math.min(jar.honey, 6);
+    for (let i = 0; i < hCap; i += 1) {
+      const hit = hlKind === 'honey' && i === hCap - 1 ? ' last-hit' : '';
+      parts.push(`<span class="ing${hit}">${ICON.honey}</span>`);
+    }
+    if (jar.honey > 6) parts.push(`<span class="ing-more">×${jar.honey}</span>`);
+    for (let i = 0; i < jar.lemon; i += 1) {
+      const hit = hlKind === 'lemon' && i === jar.lemon - 1 ? ' last-hit' : '';
+      parts.push(`<span class="ing${hit}">${ICON.lemon}</span>`);
+    }
+    contents = parts.join('');
+  } else {
+    contents = `<span class="jar-empty">${ICON.jar}</span>`;
+  }
+
   return `<div class="jar ${jar.lidded ? 'lidded' : ''} ${isTarget ? 'target' : ''}"
       ${isTarget ? `data-act="target-jar" data-pid="${ownerId}" data-jar="${jar.id}"` : ''}>
     <div class="jar-contents">${contents}</div>
     <div class="jar-meta">
-      ${jar.lidded ? `<span class="lid">${ICON.lid}</span>` : ''}
+      ${jar.lidded ? `<span class="lid${hlKind === 'lid' ? ' last-hit' : ''}">${ICON.lid}</span>` : ''}
       ${value > 0 ? `<span class="jar-val">🪙${value}</span>` : ''}
     </div>
   </div>`;

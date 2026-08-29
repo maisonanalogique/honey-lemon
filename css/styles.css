@@ -117,25 +117,16 @@ h3 { font-size: 15px; margin: 4px 0; color: var(--muted); }
 .pname { font-weight: 700; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tag { font-size: 11px; color: var(--muted); font-weight: 600; }
 .tag.team0 { color: #2a7de1; } .tag.team1 { color: #c0392b; }
-.coins { font-weight: 700; }
-.mat-right { margin-left: auto; display: flex; align-items: center; gap: 8px; min-width: 0; }
-.last-card {
-  display: inline-flex; align-items: center; gap: 4px; min-width: 0;
-  background: #fff5d6; border: 1px solid var(--line); border-radius: 999px;
-  padding: 2px 9px 2px 7px; font-size: 12px; color: var(--ink);
-}
-.last-card .lc-label { color: var(--muted); flex: 0 0 auto; }
-.last-card .lc-icon { position: relative; font-size: 15px; flex: 0 0 auto; }
-.last-card .lc-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.last-card .bear-n { width: 13px; height: 13px; font-size: 9px; right: -6px; bottom: -3px; }
-.last-card.just-played {
-  background: var(--honey); border-color: var(--honey-deep); color: #3a2b00;
-  animation: lastpulse .55s ease-out;
-}
-.last-card.just-played .lc-label { color: #6b5200; }
-@keyframes lastpulse {
-  0% { box-shadow: 0 0 0 0 rgba(224, 142, 0, .55); }
-  100% { box-shadow: 0 0 0 10px rgba(224, 142, 0, 0); }
+.coins { margin-left: auto; font-weight: 700; }
+/* Each honey/lemon in a jar is its own span so the last one played can be
+   highlighted. `.last-hit` marks the icon of the most recent card played
+   (ingredient or lid) — a subtle honey-tinted swatch behind it. */
+.jar-contents .ing { position: relative; display: inline-block; }
+.jar-contents .ing-more { color: var(--ink); font-size: 14px; vertical-align: middle; }
+.last-hit {
+  border-radius: 7px;
+  background: rgba(246, 177, 0, .32);
+  box-shadow: 0 0 0 3px rgba(246, 177, 0, .32);
 }
 .jars { display: flex; gap: 8px; flex-wrap: wrap; }
 .jar {
@@ -170,9 +161,9 @@ h3 { font-size: 15px; margin: 4px 0; color: var(--muted); }
 .hc-icon { font-size: 30px; position: relative; }
 .hc-name { font-size: 12px; font-weight: 600; text-align: center; }
 .bear-n {
-  position: absolute; right: -8px; bottom: -4px; background: var(--ink); color: #fff;
+  position: absolute; right: -8px; bottom: -4px; background: var(--ink); color: var(--paper);
   font-size: 11px; font-weight: 800; border-radius: 999px; width: 17px; height: 17px;
-  display: grid; place-items: center;
+  display: grid; place-items: center; box-shadow: 0 0 0 1.5px var(--card);
 }
 
 /* ---- Log ---- */
@@ -217,6 +208,5 @@ h3 { font-size: 15px; margin: 4px 0; color: var(--muted); }
   .btn.primary { color: #2a1d00; }
   .jar { background: #2a2216; } .jar.lidded { background: #201a10; }
   .roomcode { background: #3a2f16; } .turnbar { background: #3a2f16; }
-  .last-card { background: #3a2f16; }
   .mat.me { background: #332a19; }
 }

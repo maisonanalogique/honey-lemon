@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>蜂蜜檸檬 · 卡片組合展示 (Card Showcase)</title>
+  <!-- The REAL game stylesheet, so everything renders exactly like in-game. -->
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    /* Showcase-only layout (not part of the game). */
+    body { padding: 0; }
+    .showcase { max-width: 1040px; margin: 0 auto; padding: 24px 20px 80px; }
+    .showcase h1 { font-size: 26px; margin: 6px 0 2px; }
+    .showcase .sub { color: var(--muted); margin: 0 0 24px; }
+    .sec { margin: 34px 0 8px; }
+    .sec h2 { font-size: 18px; margin: 0 0 4px; }
+    .sec .note { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+    .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+    .cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .cell .cap { font-size: 12px; color: var(--muted); text-align: center; }
+    .worth .cap { color: var(--honey-deep); font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 90px repeat(3, 1fr); gap: 12px; align-items: center; max-width: 640px; }
+    .grid .head { font-size: 12px; color: var(--muted); text-align: center; font-weight: 700; }
+    .grid .rowhead { font-size: 12px; color: var(--muted); font-weight: 700; }
+    .matwrap { max-width: 560px; }
+    .hl-demo { display: flex; flex-wrap: wrap; gap: 22px; }
+    .hl-demo .cell .cap { max-width: 120px; }
+
+    /* --- Ingredient spans (the planned new jar rendering) --- */
+    .jar-contents .ing { position: relative; display: inline-block; }
+    .jar-contents .ing-more { color: var(--ink); font-size: 14px; vertical-align: middle; }
+
+    /* --- Candidate "last played" highlight styles (A–D) + red-box ref --- */
+    /* A: soft honey glow */
+    .hl-a { border-radius: 50%; box-shadow: 0 0 7px 3px rgba(246,177,0,.85); }
+    /* B: tinted rounded swatch behind */
+    .hl-b { border-radius: 7px; background: rgba(246,177,0,.32); box-shadow: 0 0 0 3px rgba(246,177,0,.32); }
+    /* C: corner gold pip */
+    .hl-c::after { content: ''; position: absolute; top: -2px; right: -3px; width: 8px; height: 8px;
+      border-radius: 50%; background: var(--honey-deep); box-shadow: 0 0 0 2px var(--paper); }
+    /* D: gentle lift */
+    .hl-d { transform: scale(1.3); filter: drop-shadow(0 2px 3px rgba(180,120,0,.55)); }
+    /* reference: the red box you tried */
+    .hl-red { outline: 2px solid #e23; border-radius: 3px; }
+
+    .swatchlabel { font-weight: 700; color: var(--ink); }
+  </style>
+</head>
+<body>
+  <div class="showcase">
+    <h1>蜂蜜檸檬 · 卡片組合展示</h1>
+    <p class="sub">用實際遊戲 UI 渲染 · Rendered with the real in-game stylesheet</p>
+
+    <div class="sec">
+      <h2>1. 所有卡片 (Cards)</h2>
+      <p class="note">手牌中每張卡片的樣子。</p>
+      <div class="row" id="cards"></div>
+    </div>
+
+    <div class="sec">
+      <h2>2. 罐子的所有組合 (Jar combinations)</h2>
+      <p class="note">直欄 = 檸檬數，橫列 = 蜂蜜數。有金幣標記的才賣得到錢（1蜜=1、2蜜=2、3蜜=4、3蜜+1檬=8），其餘配方 0 元。</p>
+      <div class="grid" id="grid"></div>
+    </div>
+
+    <div class="sec">
+      <h2>3. 溢出 & 蓋蓋子 (Overfilled & lidded)</h2>
+      <p class="note">超過 6 顆蜜會用 ×N 表示；蓋子讓罐子變灰、不能再動，但賣價不變。</p>
+      <div class="row" id="misc"></div>
+    </div>
+
+    <div class="sec">
+      <h2>4. 玩家區塊範例 (Player mats)</h2>
+      <p class="note">目前輪到誰（金框）、你自己、對手、以及 4 人組隊模式的隊伍標籤。</p>
+      <div class="matwrap" id="mats"></div>
+    </div>
+
+    <div class="sec">
+      <h2>5. 「最後出牌」高亮樣式候選 (Last-played highlight)</h2>
+      <p class="note">同一個罐子（3蜜+1檬），把最後打出的那顆檸檬用不同方式標示。挑一個你喜歡的，我就套進遊戲。</p>
+      <div class="hl-demo" id="hl"></div>
+    </div>
+  </div>
+
+  <script>
+    const ICON = { honey: '🍯', lemon: '🍋', lid: '🎀', bear: '🐻', bigbear: '🐻', truck: '🚚' };
+    const JAR_SVG = `<svg class="ico-jar" viewBox="0 0 24 24" width="1.05em" height="1.05em" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><rect x="6.3" y="2.4" width="11.4" height="3.4" rx="1.3"/><path d="M6 5.8h12v13.4A2.4 2.4 0 0 1 15.6 21.6H8.4A2.4 2.4 0 0 1 6 19.2z"/></svg>`;
+
+    function scoreJar(h, l) {
+      if (h === 3 && l === 1) return 8;
+      if (h === 3 && l === 0) return 4;
+      if (h === 2 && l === 0) return 2;
+      if (h === 1 && l === 0) return 1;
+      return 0;
+    }
+
+    // Mirrors the game's renderJar, but ingredients are individual spans so a
+    // single icon can be highlighted. opts: {lidded, highlight:'honey'|'lemon', hlClass}
+    function jarHTML(h, l, opts = {}) {
+      const { lidded = false, highlight = null, hlClass = '' } = opts;
+      let contents;
+      if (h || l) {
+        const parts = [];
+        const hCap = Math.min(h, 6);
+        for (let i = 0; i < hCap; i++) {
+          const hl = highlight === 'honey' && i === hCap - 1;
+          parts.push(`<span class="ing ${hl ? hlClass : ''}">${ICON.honey}</span>`);
+        }
+        if (h > 6) parts.push(`<span class="ing-more">×${h}</span>`);
+        for (let i = 0; i < l; i++) {
+          const hl = highlight === 'lemon' && i === l - 1;
+          parts.push(`<span class="ing ${hl ? hlClass : ''}">${ICON.lemon}</span>`);
+        }
+        contents = parts.join('');
+      } else {
+        contents = `<span class="jar-empty">${JAR_SVG}</span>`;
+      }
+      const val = scoreJar(h, l);
+      return `<div class="jar ${lidded ? 'lidded' : ''}">
+        <div class="jar-contents">${contents}</div>
+        <div class="jar-meta">${lidded ? `<span class="lid">${ICON.lid}</span>` : ''}${val > 0 ? `<span class="jar-val">🪙${val}</span>` : ''}</div>
+      </div>`;
+    }
+
+    function cardName(type, value) {
+      return ({
+        jar: '罐子', honey: '蜂蜜', lemon: '檸檬', lid: '蓋子',
+        bigbear: '大熊', truck: '收購車',
+      })[type] || `小熊（吃 ${value}）`;
+    }
+    function handCardHTML(type, value) {
+      const bn = type === 'bear' ? `<span class="bear-n">${value}</span>` : '';
+      const icon = type === 'jar' ? JAR_SVG : ICON[type];
+      return `<button class="handcard" style="cursor:default">
+        <span class="hc-icon">${icon}${bn}</span>
+        <span class="hc-name">${cardName(type, value)}</span>
+      </button>`;
+    }
+
+    // 1. Cards
+    const cards = [['jar'], ['honey'], ['lemon'], ['lid'], ['bear', 1], ['bear', 2], ['bear', 3], ['bigbear'], ['truck']];
+    document.getElementById('cards').innerHTML = cards.map(([t, v]) => handCardHTML(t, v)).join('');
+
+    // 2. Jar grid: honey 0..4 rows, lemon 0..2 cols
+    const g = document.getElementById('grid');
+    let gh = `<div class="head"></div><div class="head">0 檸檬</div><div class="head">1 檸檬</div><div class="head">2 檸檬</div>`;
+    for (let h = 0; h <= 4; h++) {
+      gh += `<div class="rowhead">${h} 蜜</div>`;
+      for (let l = 0; l <= 2; l++) {
+        const worth = scoreJar(h, l) > 0;
+        gh += `<div class="cell ${worth ? 'worth' : ''}">${jarHTML(h, l)}<span class="cap">${worth ? '值錢' : '0'}</span></div>`;
+      }
+    }
+    g.innerHTML = gh;
+
+    // 3. Overfilled & lidded
+    document.getElementById('misc').innerHTML = [
+      [jarHTML(7, 0), '7 蜜（溢出）'],
+      [jarHTML(4, 1), '4蜜+1檬（0元）'],
+      [jarHTML(0, 0, { lidded: true }), '空罐 + 蓋子'],
+      [jarHTML(3, 0, { lidded: true }), '3蜜 + 蓋子'],
+      [jarHTML(3, 1, { lidded: true }), '3蜜1檬 + 蓋子'],
+    ].map(([j, cap]) => `<div class="cell">${j}<span class="cap">${cap}</span></div>`).join('');
+
+    // 4. Player mats
+    function matHTML(name, opts = {}) {
+      const { current = false, me = false, team = null, jars = '' } = opts;
+      return `<div class="mat ${current ? 'current' : ''} ${me ? 'me' : ''}" style="margin-bottom:10px">
+        <div class="mat-head">
+          <span class="pname">${name}${me ? ' <span class="tag">（你自己）</span>' : ''}</span>
+          ${team != null ? `<span class="tag team${team}">隊伍 ${team + 1}</span>` : ''}
+          <span class="coins" style="margin-left:auto">🪙 ${opts.coins ?? 0}</span>
+        </div>
+        <div class="jars">${jars || `<span class="hint">（空）</span>`}</div>
+      </div>`;
+    }
+    document.getElementById('mats').innerHTML =
+      matHTML('stillwind', { current: true, me: true, coins: 8, jars: jarHTML(3, 1) + jarHTML(1, 0) }) +
+      matHTML('try', { jars: jarHTML(2, 0, { lidded: true }) }) +
+      matHTML('Amy', { team: 0, coins: 4, jars: jarHTML(3, 0) }) +
+      matHTML('Bo', { team: 1, jars: jarHTML(0, 0) });
+
+    // 5. Highlight style candidates on a real jar (3 honey + 1 lemon, mark the lemon)
+    const styles = [
+      ['hl-a', 'A · 柔和蜂蜜光暈', 'soft glow'],
+      ['hl-b', 'B · 淡色圓底 swatch', 'tinted swatch'],
+      ['hl-c', 'C · 角落小金點', 'corner pip'],
+      ['hl-d', 'D · 輕微浮起', 'gentle lift'],
+      ['hl-red', '（你試的紅框）', 'red box — for reference'],
+      ['', '無高亮 (none)', 'baseline'],
+    ];
+    document.getElementById('hl').innerHTML = styles.map(([cls, label, en]) =>
+      `<div class="cell">${jarHTML(3, 1, { highlight: 'lemon', hlClass: cls })}
+        <span class="cap"><span class="swatchlabel">${label}</span><br>${en}</span></div>`).join('');
+  </script>
+</body>
+</html>
