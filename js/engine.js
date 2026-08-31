@@ -316,14 +316,20 @@ export function playCard(state, playerId, handIndex, target = {}) {
   return endTurn(s);
 }
 
-// Discard a card — only permitted when the player has no legal play at all.
+// Discard a card. Allowed for any card that has no legal play right now —
+// whether or not the rest of your hand is playable. (You still can't ditch a
+// playable card to dodge playing it; and jar/bigbear/truck are always playable,
+// so they can never be discarded.) This lets a player sitting on a stuck card
+// (e.g. a lid with every jar already lidded) plus a truck choose to bin the
+// stuck card instead of being forced to play the truck.
 export function discardCard(state, playerId, handIndex) {
   const s = clone(state);
   const actor = currentPlayer(s);
   if (actor.id !== playerId) throw new Error('not your turn');
-  if (currentPlayerHasLegalMove(s)) throw new Error('you must play a card');
-  const card = actor.hand.splice(handIndex, 1)[0];
+  const card = actor.hand[handIndex];
   if (!card) throw new Error('no such card');
+  if (cardIsPlayable(s, card)) throw new Error('that card is playable — play it');
+  actor.hand.splice(handIndex, 1);
   s.discard.push(card);
   s.log.push({ t: 'discard', by: actor.id, card: describe(card) });
   return endTurn(s);

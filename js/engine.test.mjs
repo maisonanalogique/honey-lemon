@@ -1,7 +1,7 @@
 // Quick smoke test for the engine. Run: node js/engine.test.mjs
 import {
   createMatch, scoreJar, playCard, currentPlayer, legalTargets,
-  cardIsPlayable, endRound, standings, roundsFor,
+  cardIsPlayable, endRound, standings, roundsFor, discardCard,
 } from './engine.js';
 
 let pass = 0, fail = 0;
@@ -79,6 +79,26 @@ cur.hand = [{ type: 'jar' }];
 s = playCard(s, cur.id, 0, { playerId: cur.id });
 ok('playing a jar adds a second jar to the target', s.players.find((p) => p.id === cur.id).jars.length === 2);
 ok('turn advanced to seat 1', s.turnSeat === 1);
+
+// --- Discard rule: an unplayable card can be ditched even with a playable one ---
+function discardBoard() {
+  return {
+    phase: 'playing',
+    players: [
+      { id: 'a', name: 'A', seat: 0, hand: [{ type: 'lid' }, { type: 'truck' }],
+        jars: [{ id: 'j', honey: 0, lemon: 0, lidded: true }] }, // only jar is lidded
+      { id: 'b', name: 'B', seat: 1, hand: [], jars: [{ id: 'k', honey: 0, lemon: 0, lidded: true }] },
+    ],
+    deck: [{ type: 'honey' }], discard: [], log: [], totals: { a: 0, b: 0 },
+    turnSeat: 0, round: 1, totalRounds: 3, teamMode: false, version: 1,
+  };
+}
+let didDiscard = false;
+try { const r = discardCard(discardBoard(), 'a', 0); didDiscard = r.turnSeat === 1; } catch (e) { /* fail */ }
+ok('can discard an unplayable lid while also holding a playable truck', didDiscard);
+let blockedTruck = false;
+try { discardCard(discardBoard(), 'a', 1); } catch (e) { blockedTruck = true; }
+ok('cannot discard the (always-playable) truck', blockedTruck);
 
 // --- End round settles totals ---
 let s2 = createMatch(players, mulberry32(1));

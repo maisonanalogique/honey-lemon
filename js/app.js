@@ -229,12 +229,15 @@ function doCardTap(idx) {
   const cur = currentPlayer(s);
   if (cur.id !== me || app.ui.passGateFor != null) return;
 
-  if (!currentPlayerHasLegalMove(s)) { // forced discard
-    applyMove((x) => discardCard(x, me, idx));
+  const card = cur.hand[idx];
+  if (!card) return;
+
+  // A card with no legal play can be discarded — even if other cards are
+  // playable — so a stuck card next to a truck doesn't force the truck.
+  if (!cardIsPlayable(s, card)) {
+    askConfirm(t('confirmDiscard'), () => applyMove((x) => discardCard(x, me, idx)));
     return;
   }
-  const card = cur.hand[idx];
-  if (!cardIsPlayable(s, card)) { note(t('mustPlay')); return; }
 
   if (card.type === 'bigbear') {
     askConfirm(t('confirmBigbear'), () => applyMove((x) => playCard(x, me, idx, {})));
@@ -537,12 +540,16 @@ function renderHandArea(s, me, cur, myTurn, targeting) {
 
   const cards = hand.map((c, i) => {
     const selected = targeting && app.ui.targetIdx === i;
-    const playable = iAmActor && (forced || cardIsPlayable(s, c));
+    const canPlay = cardIsPlayable(s, c);
+    // On my turn an unplayable card is "discardable" (tappable, tagged); when
+    // it's not my turn my cards are just shown dimmed.
+    const cls = !iAmActor || !myTurn ? 'dim' : (canPlay ? '' : 'discardable');
     const badge = c.type === 'bear' ? `<span class="bear-n">${c.value}</span>` : '';
-    return `<button class="handcard ${selected ? 'sel' : ''} ${playable ? '' : 'dim'}"
+    return `<button class="handcard ${selected ? 'sel' : ''} ${cls}"
         ${iAmActor && myTurn ? `data-act="card" data-idx="${i}"` : ''}>
       <span class="hc-icon">${ICON[c.type]}${badge}</span>
       <span class="hc-name">${cardName(c)}</span>
+      ${iAmActor && myTurn && !canPlay ? `<span class="hc-tag">${t('discard')}</span>` : ''}
     </button>`;
   }).join('');
 
